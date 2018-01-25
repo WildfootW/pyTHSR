@@ -282,15 +282,15 @@ class CycleGAN:
             [clf_realA, clf_fakeA, clf_realB, clf_fakeB])
         self.trainnerD.compile(optimizer=self.dopt, loss='MSE')
 
-    def fit(self, epoch_num = 10, disc_iter = 10, save_period = 1):
+    def fit(self, start_epoch = 0, epoch_num = 10, disc_iter = 10, save_period = 1):
 
-        for i in range(epoch_num):
+        for i in range(start_epoch, start_epoch+epoch_num):
             print ('Epoch {}'.format(i+1))
 
             # change learning rate
             self.UpdateOptimizerLR(i+1, [self.trainnerG, self.trainnerD])
 
-            for _ in range(self.MAX_NUM // self.batch_img_num ):
+            for _ in range(self.MAX_NUM // self.batch_img_num):
 
                 self.collect_images()
 
