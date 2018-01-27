@@ -127,8 +127,11 @@ def MinImgCount(tags = ['A', 'B'], task_name = 'apple2orange'):
     
     return min([len(os.listdir('{}/{}/train{}'.format(dataset, task_name, tag))) for tag in tags])
 
-def randReadImg(tag, num, shp=(256, 256, 3), printName=False, task_name='apple2orange'):
-    fo = '{}/{}/train{}'.format(dataset, task_name, tag)
+def randReadImg(tag, num, shp=(256, 256, 3), printName=False, task_name='apple2orange', absolute_path=False):
+    if absolute_path:
+        fo = tag
+    else:
+        fo = '{}/{}/train{}'.format(dataset, task_name, tag)
     fs = [f for f in os.listdir(fo) if os.path.isfile(os.path.join(fo, f))]
     ret = np.zeros(shape=((num, ) + shp))
     for _ in range(num):
