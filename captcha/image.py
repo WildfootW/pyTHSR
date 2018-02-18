@@ -8,6 +8,7 @@
 
 import os
 import random
+import numpy as np
 from PIL import Image
 from PIL import ImageFilter
 from PIL.ImageDraw import Draw
@@ -125,6 +126,11 @@ class ImageCaptcha(_Captcha):
         return self._truefonts
 
     @staticmethod
+    def add_curve(image, color, bbox, startAg, endAg):
+        Draw(image).arc(bbox, startAg, endAg, fill=color)
+        return image
+
+    @staticmethod
     def create_noise_curve(image, color):
         w, h = image.size
         x1 = random.randint(0, int(w / 5))
@@ -134,8 +140,7 @@ class ImageCaptcha(_Captcha):
         points = [x1, y1, x2, y2]
         end = random.randint(160, 200)
         start = random.randint(0, 20)
-        Draw(image).arc(points, start, end, fill=color)
-        return image
+        return ImageCaptcha.add_curve(image, color, points, start, end)
 
     @staticmethod
     def create_noise_dots(image, color, width=3, number=30):
@@ -148,7 +153,33 @@ class ImageCaptcha(_Captcha):
             number -= 1
         return image
 
-    def create_captcha_image(self, chars, color, background):
+    def create_THSR_captcha(self, chars, color, background, warp=False, pen_size=2, isImg=False):
+        # create text image
+        im = self.create_captcha_image(chars, color, background, warp=warp).convert('L')
+        thresh = np.where(np.array(im) >= 254, 255, 0).astype(np.uint8)
+
+        # create curve
+        dummy = Image.fromarray(255*np.ones((self._height, self._width), dtype=np.uint8), mode='L')
+        radius = random.randint(4, 6) * self._width
+        Ox, Oy = self._width+random.randint(-2, 2), radius+random.randint(3, 6)
+        x0, y0, x1, y1 = Ox-radius, Oy-radius, Ox+radius, Oy+radius
+        im_mask = self.add_curve(dummy, color, [x0, y0, x1, y1], 240, 270)
+        im_mask = thicken(im_mask, pen_size=pen_size)
+
+        # combine text & curve
+        thresh = np.where(im_mask == 0, 255 - thresh, thresh)
+        im = Image.fromarray(thresh, mode='L')
+        im = im.filter(ImageFilter.SMOOTH)
+        im = im.point(lambda x: 0 if x < 128 else 255, 'L')
+        
+        # black noise
+        lamb = 0.3
+        arr = np.clip(np.array(im) - (lamb * np.random.normal(size=(self._height, self._width)) * 255), 0, 255).astype(np.uint8)
+        if isImg:
+            return Image.fromarray(arr, mode='L')
+        return arr
+
+    def create_captcha_image(self, chars, color, background, warp=False):
         """Create the CAPTCHA image itself.
 
         :param chars: text to be generated.
@@ -160,23 +191,23 @@ class ImageCaptcha(_Captcha):
         image = Image.new('RGB', (self._width, self._height), background)
         draw = Draw(image)
 
-        def _draw_character(c, warp=False):
+        def _draw_character(c):
             font = random.choice(self.truefonts)
             w, h = draw.textsize(c, font=font)
 
             dx = random.randint(0, 4)
             dy = random.randint(0, 6)
             im = Image.new('RGBA', (w + dx, h + dy))
-            Draw(im).text((dx, dy), c, font=font, fill=color)
+            Draw(im).text((dx, dy), c, font=font, fill=(25, 25, 25, 25))
 
             # rotate
             im = im.crop(im.getbbox())
-            im = im.rotate(random.uniform(-10, 10), Image.BILINEAR, expand=1)
+            im = im.rotate(random.uniform(-15, 15), Image.BILINEAR, expand=1)
 
             # warp
             if warp:
-                dx = w * random.uniform(0.1, 0.3)
-                dy = h * random.uniform(0.2, 0.3)
+                dx = w * random.uniform(0.1, 0.5)
+                dy = h * random.uniform(0.2, 0.5)
                 x1 = int(random.uniform(-dx, dx))
                 y1 = int(random.uniform(-dy, dy))
                 x2 = int(random.uniform(-dx, dx))
@@ -191,7 +222,6 @@ class ImageCaptcha(_Captcha):
                 )
                 im = im.resize((w2, h2))
                 im = im.transform((w, h), Image.QUAD, data)
-                return im
             return im
 
         images = []
@@ -205,7 +235,7 @@ class ImageCaptcha(_Captcha):
 
         average = int(text_width / len(chars))
         rand = int(average * 0.1) #int(0.25 * average)
-        offset = int(average * 0.6) #int(average * 0.1)
+        offset = int(average * 0.4) #int(average * 0.1)
 
         for im in images:
             w, h = im.size
@@ -218,19 +248,30 @@ class ImageCaptcha(_Captcha):
 
         return image
 
-    def generate_image(self, chars):
+    def generate_image(self, chars, with_dots=True, with_curve=True, warp=None):
         """Generate the image of the given characters.
 
         :param chars: text to be generated.
         """
+        warp = warp or True
         background = random_color(238, 255)
         color = random_color(0, 200, random.randint(220, 255))
-        im = self.create_captcha_image(chars, color, background)
-        self.create_noise_dots(im, color)
-        self.create_noise_curve(im, color)
+        im = self.create_captcha_image(chars, color, background, warp=warp)
+        if with_dots:
+            self.create_noise_dots(im, color)
+        if with_curve:
+            self.create_noise_curve(im, color)
         im = im.filter(ImageFilter.SMOOTH)
         return im
 
+def thicken(im, pen_size=2):
+    ret = np.zeros_like(np.array(im), dtype=np.float)
+    for i in range(pen_size):
+        ret += np.roll(np.array(im), i, axis=0)
+    ret[ret != pen_size*255] = 0
+    ret[ret == pen_size*255] = 255
+    ret = ret.astype(np.uint8)
+    return ret
 
 def random_color(start, end, opacity=None):
     red = random.randint(start, end)
