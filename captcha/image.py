@@ -8,6 +8,8 @@
 
 import os
 import random
+from functools import partial
+
 import numpy as np
 from PIL import Image
 from PIL import ImageFilter
@@ -153,31 +155,39 @@ class ImageCaptcha(_Captcha):
             number -= 1
         return image
 
-    def create_THSR_captcha(self, chars, color, background, warp=False, pen_size=2, isImg=False):
+    def create_THSR_captcha(self, chars, color, background, warp=False, pen_size=2, isImg=False, with_clean=False):
         # create text image
         im = self.create_captcha_image(chars, color, background, warp=warp).convert('L')
         thresh = np.where(np.array(im) >= 254, 255, 0).astype(np.uint8)
 
         # create curve
         dummy = Image.fromarray(255*np.ones((self._height, self._width), dtype=np.uint8), mode='L')
-        radius = random.randint(4, 6) * self._width
+        radius = random.randint(3, 6) * self._width
         Ox, Oy = self._width+random.randint(-2, 2), radius+random.randint(3, 6)
         x0, y0, x1, y1 = Ox-radius, Oy-radius, Ox+radius, Oy+radius
-        im_mask = self.add_curve(dummy, color, [x0, y0, x1, y1], 240, 270)
+        #print('radius', radius)
+        #print('deltaY', Oy-radius)
+        im_mask = self.add_curve(dummy, color, [x0, y0, x1, y1], 200, 280)
         im_mask = thicken(im_mask, pen_size=pen_size)
 
         # combine text & curve
-        thresh = np.where(im_mask == 0, 255 - thresh, thresh)
-        im = Image.fromarray(thresh, mode='L')
+        mask_im = np.where(im_mask == 0, 255 - thresh, thresh)
+        im = Image.fromarray(mask_im, mode='L')
         im = im.filter(ImageFilter.SMOOTH)
         im = im.point(lambda x: 0 if x < 128 else 255, 'L')
         
         # black noise
-        lamb = 0.3
-        arr = np.clip(np.array(im) - (lamb * np.random.normal(size=(self._height, self._width)) * 255), 0, 255).astype(np.uint8)
+        lamb = 0#0.5
+        std = 64
+        #arr = np.clip(np.array(im) - (lmb * np.random.normal(loc=128, scale=std, size=(self._height, self._width))), 0, 255).astype(np.uint8)
+        arr = np.clip(np.array(im) - (lamb * np.random.poisson(1.0, size=(self._height, self._width))), 0, 255).astype(np.uint8)
+
+        ret = [arr]
+        if with_clean:
+            ret.append(thresh)
         if isImg:
-            return Image.fromarray(arr, mode='L')
-        return arr
+            ret = list(map(partial(Image.fromarray, mode='L'), ret))
+        return ret
 
     def create_captcha_image(self, chars, color, background, warp=False):
         """Create the CAPTCHA image itself.
