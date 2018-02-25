@@ -5,7 +5,11 @@ import os
 import sys
 import argparse
 from functools import partial, reduce
-from itertools import izip, chain
+from itertools import chain
+try:
+    from itertools import izip
+except:
+    izip = zip
 
 import cv2
 import numpy as np
@@ -24,7 +28,7 @@ from captcha.image import ImageCaptcha
 WIDTH, HEIGHT, CHAR_NUM = 128, 48, 4
 classes = u'ACFHKMNQPRTYZ234579'
 class_num = len(classes)
-EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 3, 10
+EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 32, 100
 VIS_SIZE = 5
 font = 'fonts/MyriadPro-Semibold.otf'
 _ones = partial(np.ones, dtype=np.uint8)
@@ -147,6 +151,8 @@ if __name__ == '__main__':
     args = parse_arg()
 
     # validation data
+    if not os.path.exists('dataset/real_cap'):
+        os.system('cd dataset; tar -xvf real_cap.tar.gz > /dev/null')
     labels = list(map(lambda p: os.path.splitext(os.path.basename(p))[0], os.listdir('dataset/real_cap')))
     label_str = ''.join(labels)
     raw_images = list(map(lambda p: _read_img(os.path.join('dataset/real_cap', p+'.bmp')), labels))
@@ -193,24 +199,25 @@ if __name__ == '__main__':
         ocr_model.save('ocr_model.h5')
 
     # visualize
-    if False:
-        before = valid_x[:VIS_SIZE]
-        ground = postprocess(before)
-        after = postprocess(model.predict(before))
-    elif True:
-        labels = [ get_rnd_label() for _ in range(VIS_SIZE) ]
-        data_pair = [ get_cap(labels[_]) for _ in range(len(labels)) ]
-        X, y = list(map(list, zip(*data_pair)))
-        before = preprocess(np.array(list(map(lambda x: np.expand_dims(x, axis=2), X))))
-        ground = np.array(list(map(lambda x: np.expand_dims(x, axis=2), y)))
-        after = postprocess(model.predict(before))
+    before = valid_x[:VIS_SIZE]
+    ground = postprocess(before)
+    after = postprocess(model.predict(before))
+    combined_valid = np.concatenate([postprocess(before), after, ground], axis=2)
 
-    pred_chars = list(map(lambda prob: classes[np.argmax(prob)], chain.from_iterable(zip(*ocr_model.predict(before)))))
+    labels = [ get_rnd_label() for _ in range(VIS_SIZE) ]
+    data_pair = [ get_cap(labels[_]) for _ in range(len(labels)) ]
+    X, y = list(map(list, zip(*data_pair)))
+    before = preprocess(np.array(list(map(lambda x: np.expand_dims(x, axis=2), X))))
+    ground = np.array(list(map(lambda x: np.expand_dims(x, axis=2), y)))
+    after = postprocess(model.predict(before))
+    combined_gened = np.concatenate([postprocess(before), after, ground], axis=2)
+
+    #pred_chars = list(map(lambda prob: classes[np.argmax(prob)], chain.from_iterable(zip(*ocr_model.predict(before)))))
     # group every 4 chars
-    pred_words = list(map(''.join, izip(*[chain(pred_chars)]*CHAR_NUM)))
-    print('\n'.join(map(str, zip(pred_words, labels))))
+    #pred_words = list(map(''.join, izip(*[chain(pred_chars)]*CHAR_NUM)))
+    #print('\n'.join(map(str, zip(pred_words, labels))))
 
-    compare_ones = np.vstack(np.squeeze(np.concatenate([postprocess(before), after, ground], axis=2), axis=3))
+    compare_ones = np.vstack(np.squeeze(np.r_[combined_valid, combined_gened], axis=3))
     hist_images = Image.fromarray(compare_ones, mode='L')
     hist_images.show()
 
