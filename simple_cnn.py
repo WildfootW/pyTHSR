@@ -24,7 +24,7 @@ from captcha.image import ImageCaptcha
 WIDTH, HEIGHT, CHAR_NUM = 128, 48, 4
 classes = u'ACFHKMNQPRTYZ234579'
 class_num = len(classes)
-EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 32, 100
+EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 3, 10
 VIS_SIZE = 5
 font = 'fonts/MyriadPro-Semibold.otf'
 _ones = partial(np.ones, dtype=np.uint8)
@@ -189,14 +189,15 @@ if __name__ == '__main__':
     if args.train_ocr:
         ocr_model.compile(optimizer='adam', loss='categorical_crossentropy')
         ocr_model.fit_generator(data_generator('OCR'), epochs=EPOCHS, steps_per_epoch=STEP_PER_EP,
-                workers=1, callbacks=[es, mdckpt], validation_data=valid_gen, validation_steps=5)
+                workers=1, callbacks=[es, mdckpt], validation_data=valid_gen, validation_steps=STEP_PER_EP)
         ocr_model.save('ocr_model.h5')
 
     # visualize
-    if True:
+    if False:
         before = valid_x[:VIS_SIZE]
+        ground = postprocess(before)
         after = postprocess(model.predict(before))
-    elif False:
+    elif True:
         labels = [ get_rnd_label() for _ in range(VIS_SIZE) ]
         data_pair = [ get_cap(labels[_]) for _ in range(len(labels)) ]
         X, y = list(map(list, zip(*data_pair)))
@@ -209,7 +210,7 @@ if __name__ == '__main__':
     pred_words = list(map(''.join, izip(*[chain(pred_chars)]*CHAR_NUM)))
     print('\n'.join(map(str, zip(pred_words, labels))))
 
-    compare_ones = np.vstack(np.squeeze(np.concatenate([before, after, ground], axis=2), axis=3))
+    compare_ones = np.vstack(np.squeeze(np.concatenate([postprocess(before), after, ground], axis=2), axis=3))
     hist_images = Image.fromarray(compare_ones, mode='L')
     hist_images.show()
 
