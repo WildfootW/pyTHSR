@@ -6,3 +6,5 @@
 # VIM: Swap-files
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
+
+*.png

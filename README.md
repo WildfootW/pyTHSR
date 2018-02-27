@@ -23,8 +23,8 @@ Test with 1000 generated Captcha
 >>> # At root directory of pyTHSR
 >>> from captcha.image import ImageCaptcha
 >>> font = 'fonts/MyriadPro-Semibold.otf'
->>> generator = ImageCaptcha(width=WIDTH, height=HEIGHT, fonts=[font], font_sizes=[42,])
->>> im = generator.create_THSR_captcha('Y2NK', color='black', background='#fff', pen_size=5, isImg=True)
+>>> generator = ImageCaptcha(width=WIDTH, height=HEIGHT, fonts=[font], font_sizes=[42,], curve_width=5)
+>>> im = generator.create_THSR_captcha('Y2NK', isImg=True)
 ```
 ![sample](sample_Y2NK.bmp)
 

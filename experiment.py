@@ -4,7 +4,12 @@ from __future__ import print_function
 import os
 import sys
 from functools import partial
-from itertools import chain, izip, izip_longest
+from itertools import chain
+try:
+    from itertools import izip, izip_longest
+except:
+    izip = zip
+    from itertools import zip_longest
 
 import cv2
 import numpy as np
@@ -12,49 +17,17 @@ import pandas as pd
 from PIL import Image
 from keras.models import load_model
 
+from core import captcha, WIDTH, HEIGHT, class_num, classes, CHAR_NUM
+from image import _read_img
+from transform import preprocess, postprocess
 from captcha.image import ImageCaptcha
 from layer_utils import InstanceNormalization2D
 
-WIDTH, HEIGHT, CHAR_NUM = 128, 48, 4
-classes = u'ACFHKMNQPRTYZ234579'
-class_num = len(classes)
-font = 'fonts/MyriadPro-Semibold.otf'
 _ones = partial(np.ones, dtype=np.uint8)
-cap_gen = ImageCaptcha(width=WIDTH, height=HEIGHT, fonts=[font], font_sizes=[42,])
-get_cap = partial(cap_gen.create_THSR_captcha, color='black', background='#fff', pen_size=5, with_clean=True)
+cap_gen = captcha(curve_width=5)
+get_cap = partial(cap_gen.create_THSR_captcha, with_clean=True)
 get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(4)])
 
-def _read_img(path):
-    im = Image.open(path).convert('L')
-    im.load()
-    im = im.resize((WIDTH, HEIGHT), Image.BILINEAR)
-    return np.asarray(im).reshape((1, HEIGHT, WIDTH, 1))
-
-# @param im should be numpy array
-def close_then_open(im, k=2):
-    cl_kernel, op_kernel = _ones((k, k)), _ones((k, k))
-    im = cv2.morphologyEx(im, cv2.MORPH_CLOSE, cl_kernel)
-    im = cv2.morphologyEx(im, cv2.MORPH_OPEN, op_kernel)
-    return im
-
-def preprocess(imgs):
-    shp = imgs.shape
-    imgs = np.squeeze(imgs)
-
-    # binarize
-    threshold = 150
-    imgs[imgs > threshold] = 255
-    imgs[imgs <= threshold] = 0
-
-    if len(imgs.shape) == 3:
-        for i in range(len(imgs)):
-            imgs[i] = close_then_open(imgs[i], k=3)
-    else:
-        imgs = close_then_open(imgs, k=3)
-    imgs = imgs.reshape(shp)
-    return imgs / 127.5 - 1
-def postprocess(imgs):
-    return ((imgs+1)*127.5).astype(np.uint8)
 def parse_output(probs):
     assert len(probs) == CHAR_NUM
     pred_chars = list(map(lambda prob: classes[np.argmax(prob)], chain.from_iterable(zip(*probs))))
@@ -65,7 +38,7 @@ if __name__ == '__main__':
     if not os.path.exists('dataset/real_cap'):
         os.system('cd dataset; tar -xvf real_cap.tar.gz')
 
-    model = load_model('ocr_model.h5', custom_objects=dict(InstanceNormalization2D=InstanceNormalization2D))
+    model = load_model('BestSimpleModel.h5', custom_objects=dict(InstanceNormalization2D=InstanceNormalization2D))
 
     labels = list(map(lambda p: os.path.splitext(os.path.basename(p))[0], os.listdir('dataset/real_cap')[:10]))
     label_str = ''.join(labels)
