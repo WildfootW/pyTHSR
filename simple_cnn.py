@@ -23,24 +23,15 @@ from keras.preprocessing.image import NumpyArrayIterator
 from memory_profiler import profile
 
 from layer_utils import build_resnet_block
-from captcha.image import ImageCaptcha
+from transform import preprocess, postprocess
+from core import WIDTH, HEIGHT, CHAR_NUM, classes, class_num, captcha
+from image import _read_img
 
-WIDTH, HEIGHT, CHAR_NUM = 128, 48, 4
-classes = u'ACFHKMNQPRTYZ234579'
-class_num = len(classes)
-EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 32, 100
+EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 32, 20
 VIS_SIZE = 5
-font = 'fonts/MyriadPro-Semibold.otf'
-_ones = partial(np.ones, dtype=np.uint8)
-cap_gen = ImageCaptcha(width=WIDTH, height=HEIGHT, fonts=[font], font_sizes=[42,])
-get_cap = partial(cap_gen.create_THSR_captcha, color='black', background='#fff', pen_size=5, with_clean=True)
+cap_gen = captcha()
+get_cap = partial(cap_gen.create_THSR_captcha, color='black', background='#fff', pen_size=6, with_clean=True)
 get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(4)])
-
-def _read_img(path):
-    im = Image.open(path).convert('L')
-    im.load()
-    im = im.resize((WIDTH, HEIGHT), Image.BILINEAR)
-    return np.asarray(im).reshape((1, HEIGHT, WIDTH, 1))
 
 def simple_cnn():
     input_ = Input((HEIGHT, WIDTH, 1))
@@ -87,39 +78,10 @@ def simple_ocr():
 
     return Model(inputs=input_, outputs=char_outputs)
 
-# @param im should be numpy array
-def close_then_open(im, k=2):
-    cl_kernel, op_kernel = _ones((k, k)), _ones((k, k))
-    im = cv2.morphologyEx(im, cv2.MORPH_CLOSE, cl_kernel)
-    im = cv2.morphologyEx(im, cv2.MORPH_OPEN, op_kernel)
-    return im
-
-# pixel range: -1.0 ~ 1.0
-def preprocess(imgs):
-    shp = imgs.shape
-    imgs = np.squeeze(imgs)
-    
-    # binarize
-    threshold = 150
-    imgs[imgs > threshold] = 255
-    imgs[imgs <= threshold] = 0
-
-    # denoise
-    if len(imgs.shape) == 3:
-        for i in range(len(imgs)):
-            imgs[i] = close_then_open(imgs[i], k=3)
-    else:
-        imgs = close_then_open(imgs, k=3)
-    imgs = imgs.reshape(shp)
-    return imgs / 127.5 - 1
-def postprocess(imgs):
-    return ((imgs+1)*127.5).astype(np.uint8)
-
 def valid_generator(imgs, labels):
     while True:
         rnd_idxs = np.random.choice(len(labels), BATCHSIZE)
-        _data = imgs[rnd_idxs]
-        _label = labels[rnd_idxs]
+        _data, _label = imgs[rnd_idxs], labels[rnd_idxs]
         yield (_data, [_label[:, i] for i in range(4)])
 
 @profile
@@ -136,7 +98,7 @@ def data_generator(mode='denoise'):
             y = np.zeros((BATCHSIZE, CHAR_NUM, class_num), dtype=np.int)
             for i, char in enumerate(chain.from_iterable(labels)):
                 y[i//4, i%4, classes.find(char)] = 1
-            yield (X, [y[:, 0], y[:, 1], y[:, 2], y[:, 3]])
+            yield (X, [y[:, i] for i in range(4)])
         
 def parse_arg():
     parser = argparse.ArgumentParser('Captcha Breaker')
@@ -153,6 +115,7 @@ if __name__ == '__main__':
     # validation data
     if not os.path.exists('dataset/real_cap'):
         os.system('cd dataset; tar -xvf real_cap.tar.gz > /dev/null')
+
     labels = list(map(lambda p: os.path.splitext(os.path.basename(p))[0], os.listdir('dataset/real_cap')))
     label_str = ''.join(labels)
     raw_images = list(map(lambda p: _read_img(os.path.join('dataset/real_cap', p+'.bmp')), labels))
@@ -199,7 +162,7 @@ if __name__ == '__main__':
         ocr_model.save('ocr_model.h5')
 
     # visualize
-    before = valid_x[:VIS_SIZE]
+    before = valid_x[np.random.choice(len(valid_x), VIS_SIZE)]
     ground = postprocess(before)
     after = postprocess(model.predict(before))
     combined_valid = np.concatenate([postprocess(before), after, ground], axis=2)
