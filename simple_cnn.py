@@ -30,7 +30,6 @@ cap_gen = captcha(curve_width=6)
 get_cap = partial(cap_gen.create_THSR_captcha, with_clean=True)
 get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(4)])
 
-
 def valid_generator(imgs, labels):
     while True:
         rnd_idxs = np.random.choice(len(labels), BATCHSIZE)
