@@ -53,7 +53,20 @@ $ python simple_cnn.py --load
 $ python simple_cnn.py --load --train_ocr
 ```
 
+### Book ticket in 60 seconds
+1. Edit `_secret.py`, fillin values of 'id' and 'phone'
+```python
+secret = {
+    'id': 'A123456789',
+    'phone': '0911111111',
+}
+```
+2. Run `python book.py`
 
-## TODO:
+## TaskList:
   - [x] Train a simple [OCR model](ocr_model.h5) with this[approach 2] dataset
+  - [x] Train a simple [OCR model](pure.h5) on hand-labeled real dataset
   - [ ] Add **denoise constraint** when trains _ocr-model_
+  - [ ] Refactor data/model process flow. ex. Encapsule into a class
+  - [ ] Logging System
+  - [ ] 5-character Captcha included ( updated 2018/03/07 )
