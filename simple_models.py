@@ -1,5 +1,5 @@
 #from keras.applications.inception_resnet_v2 import InceptionResNetV2
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, BatchNormalization, Flatten, Concatenate, GaussianNoise
+from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, BatchNormalization, Flatten, Concatenate, GaussianNoise, GlobalAveragePooling2D, Dropout
 from keras.models import Model, Sequential
 from keras.preprocessing.image import NumpyArrayIterator
 
@@ -38,16 +38,22 @@ def simple_ocr():
     input_ = Input((HEIGHT, WIDTH, 1))
     nn = Conv2D(2, (3, 3), activation='selu', padding='same')(input_)
     nn = BatchNormalization()(nn)
+    nn = MaxPooling2D(pool_size=(3, 3))(nn)
     nn = Conv2D(4, (3, 3), activation='selu', padding='same')(nn)
     nn = BatchNormalization()(nn)
+    nn = MaxPooling2D(pool_size=(2, 2))(nn)
     nn = Conv2D(8, (3, 3), activation='selu', padding='same')(nn)
     nn = BatchNormalization()(nn)
+    nn = MaxPooling2D(pool_size=(2, 2))(nn)
     nn = Conv2D(4, (3, 3), activation='selu', padding='same')(nn)
     nn = BatchNormalization()(nn)
+    nn = Dropout(0.2)(nn)
     nn = Conv2D(2, (3, 3), activation='selu', padding='same')(nn)
     nn = Flatten()(nn)
-    nn = Dense(10, activation='selu')(nn)
-    nn = GaussianNoise(0.1)(nn)
+    nn = Dense(64, activation='selu')(nn)
+    nn = BatchNormalization()(nn)
+    nn = Dropout(0.1)(nn)
+    nn = GaussianNoise(0.15)(nn)
     char_outputs = [Dense(class_num, activation='softmax')(nn) for _ in range(CHAR_NUM)]
     #char_outputs = Concatenate(axis=1)()
 

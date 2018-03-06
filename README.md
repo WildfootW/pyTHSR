@@ -6,6 +6,8 @@
 
 ## Experiment
 
+### Attempt1 -- Train on my generator, Valid on real captcha
+
 Test with 1000 real hand-labeled THSR Captcha
 
 > word accuracy: 2.1%
@@ -16,7 +18,19 @@ Test with 1000 generated Captcha
 > word accuracy: 89.4%
 > char accuracy: 97.1%
 
-( exp\_result.csv stores the experiment result, can be reproduced by `python experiment.py` )
+### Attempt2 -- Train on 900 real captcha, Valid on 100 real captcha (random seed 666)
+
+Test with 1000 real hand-labeled THSR Captcha
+
+> word accuracy: 70.2%
+> char accuracy: 90.45%
+
+Test with 1000 generated Captcha
+
+> word accuracy: 0.4%
+> char accuracy: 19.175%
+
+( exp\_result\_{1|2}.csv stores the experiment result, can be reproduced by `python -O experiment.py -1` )
 
 ## THSR Captcha Generator
 ```python

@@ -9,7 +9,7 @@ try:
     from itertools import izip, izip_longest
 except:
     izip = zip
-    from itertools import zip_longest
+    from itertools import zip_longest as izip_longest
 
 import cv2
 import numpy as np
@@ -26,7 +26,7 @@ from layer_utils import InstanceNormalization2D
 _ones = partial(np.ones, dtype=np.uint8)
 cap_gen = captcha(curve_width=5)
 get_cap = partial(cap_gen.create_THSR_captcha, with_clean=True)
-get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(4)])
+get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(CHAR_NUM)])
 
 def parse_output(probs):
     assert len(probs) == CHAR_NUM
@@ -38,9 +38,9 @@ if __name__ == '__main__':
     if not os.path.exists('dataset/real_cap'):
         os.system('cd dataset; tar -xvf real_cap.tar.gz')
 
-    model = load_model('BestSimpleModel.h5', custom_objects=dict(InstanceNormalization2D=InstanceNormalization2D))
+    model = load_model('pure.h5', custom_objects=dict(InstanceNormalization2D=InstanceNormalization2D))
 
-    labels = list(map(lambda p: os.path.splitext(os.path.basename(p))[0], os.listdir('dataset/real_cap')[:10]))
+    labels = list(map(lambda p: os.path.splitext(os.path.basename(p))[0], os.listdir('dataset/real_cap')[:1000]))
     label_str = ''.join(labels)
     raw_images = list(map(lambda p: _read_img(os.path.join('dataset/real_cap', p+'.bmp')), labels))
     raw_images = np.concatenate(raw_images, axis=0)
@@ -67,4 +67,5 @@ if __name__ == '__main__':
     logs.loc['word score'] = [ float(np.sum(logs[col][:len(labels)] == labels))/len(labels) for col in logs.columns ]
     logs.loc['char score'] = [ float(sum([int(c0==c1) for c0, c1 in izip_longest(''.join(logs[col][:len(labels)]), label_str)]))/(CHAR_NUM*len(labels)) for col in logs.columns ]
     logs.to_csv('exp_result.csv')
+    print('report generated')
 

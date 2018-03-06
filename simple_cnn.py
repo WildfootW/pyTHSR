@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from keras.models import Model
-from keras.callbacks import TensorBoard, CSVLogger, LambdaCallback, Callback, EarlyStopping, ModelCheckpoint
+from keras.callbacks import TensorBoard, CSVLogger, LambdaCallback, Callback, EarlyStopping, ModelCheckpoint, LearningRateScheduler
 
 from transform import preprocess, postprocess, onehot
 from core import WIDTH, HEIGHT, CHAR_NUM, classes, class_num, captcha
@@ -28,13 +28,20 @@ EPOCHS, BATCHSIZE, STEP_PER_EP = 10, 32, 20
 VIS_SIZE = 5
 cap_gen = captcha(curve_width=6)
 get_cap = partial(cap_gen.create_THSR_captcha, with_clean=True)
-get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(4)])
+get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(CHAR_NUM)])
+
+def lr_sched(ep): 
+    return 1e-2 - 1e-4*0.01*ep
 
 def valid_generator(imgs, labels):
     while True:
-        rnd_idxs = np.random.choice(len(labels), BATCHSIZE)
-        _data, _label = imgs[rnd_idxs], labels[rnd_idxs]
-        yield (_data, [_label[:, i] for i in range(CHAR_NUM)])
+        rnd_idxs = np.random.choice(len(labels), len(labels))
+        it = 0
+        while it + BATCHSIZE < len(labels):
+            rnd_id = rnd_idxs[it:it+BATCHSIZE]
+            _data, _label = imgs[rnd_id], labels[rnd_id]
+            yield (_data, [_label[:, i] for i in range(CHAR_NUM)])
+            it += BATCHSIZE
 
 def data_generator(mode='denoise'):
     while True:
@@ -67,6 +74,7 @@ if __name__ == '__main__':
 
     loss = 'mse'
     es = EarlyStopping(patience=5)
+    lrs = LearningRateScheduler(lr_sched)
     mdckpt = ModelCheckpoint('weights.{loss}.hdf5'.format(loss=loss), save_best_only=True, save_weights_only=True)
     model, ocr_layer = simple_cnn(), simple_ocr()
 

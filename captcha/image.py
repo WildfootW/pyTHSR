@@ -11,6 +11,7 @@ import random
 from functools import partial
 
 import numpy as np
+from scipy import ndimage
 from PIL import Image
 from PIL import ImageFilter
 from PIL.ImageDraw import Draw
@@ -119,6 +120,7 @@ class ImageCaptcha(_Captcha):
         self.text_param = text_param
         self.curve_param = curve_param
         self.noise_param = noise_param
+        self.curve_param['width'] = curve_width
 
     @property
     def truefonts(self):
@@ -159,6 +161,16 @@ class ImageCaptcha(_Captcha):
             number -= 1
         return image
 
+    @staticmethod
+    def speckle(img):
+        severity = np.random.uniform(0, 0.8)
+        blur = ndimage.gaussian_filter(np.random.randn(*img.shape) * severity, 1)
+        img_speck = (img+blur)
+        img_speck[img_speck > 1] = 1
+        img_speck[img_speck <= 0] = 0
+        return img_speck
+
+
     def create_THSR_captcha(self, chars, color='black', background='#fff', warp=True, isImg=False, with_clean=False):
 
         # unpack arguments
@@ -188,11 +200,12 @@ class ImageCaptcha(_Captcha):
         im = im.point(lambda x: 0 if x < 128 else 255, 'L')
         
         # black noise
-        lamb =   self.noise_param.get('lamb', 0)
+        lamb =   self.noise_param.get('lamb', 0.35)
         std  =   self.noise_param.get('std', 64)
         rnd_fn = self.noise_param.get('fn', partial(np.random.poisson, lam=1.0))
         #arr = np.clip(np.array(im) - (lmb * np.random.normal(loc=128, scale=std, size=(self._height, self._width))), 0, 255).astype(np.uint8)
         arr = np.clip(np.array(im) - (lamb * rnd_fn(size=(self._height, self._width))), 0, 255).astype(np.uint8)
+        arr = np.clip(self.speckle(arr/255.)*255, 0, 255).astype(np.uint8)
 
         ret = [arr]
         if with_clean:
@@ -234,7 +247,7 @@ class ImageCaptcha(_Captcha):
             # warp
             if warp:
                 dx = w * random.uniform(0.1, 0.5)
-                dy = h * random.uniform(0.2, 0.5)
+                dy = h * random.uniform(0.2, 0.3)
                 x1 = int(random.uniform(-dx, dx))
                 y1 = int(random.uniform(-dy, dy))
                 x2 = int(random.uniform(-dx, dx))

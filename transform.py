@@ -15,22 +15,20 @@ def close_then_open(im, k=2):
     return im
 
 # pixel range: -1.0 ~ 1.0
-def preprocess(imgs):
+def preprocess(imgs, denoise=True):
     shp = imgs.shape
     imgs = np.squeeze(imgs)
     
     # binarize
-    threshold = 150
-    imgs[imgs > threshold] = 255
-    imgs[imgs <= threshold] = 0
+    #threshold = 150
+    #imgs[imgs > threshold] = 255
+    #imgs[imgs <= threshold] = 0
 
-    # denoise
-    if len(imgs.shape) == 3:
-        imgs = np.array(list(map(partial(close_then_open, k=3), imgs)))
-        #for i in range(len(imgs)):
-        #    imgs[i] = close_then_open(imgs[i], k=3)
-    else:
-        imgs = close_then_open(imgs, k=3)
+    if denoise:
+        if len(imgs.shape) == 3:
+            imgs = np.array(list(map(partial(close_then_open, k=3), imgs)))
+        else:
+            imgs = close_then_open(imgs, k=3)
     imgs = imgs.reshape(shp)
     return imgs / 127.5 - 1
 
