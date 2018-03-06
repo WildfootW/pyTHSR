@@ -56,12 +56,22 @@ $ python simple_cnn.py --load --train_ocr
 ### Book ticket in 60 seconds
 1. Edit `_secret.py`, fillin values of 'id' and 'phone'
 ```python
-secret = {
+secret = [{
     'id': 'A123456789',
     'phone': '0911111111',
-}
+}, ]
 ```
-2. Run `python book.py`
+2. Edit `book.py`, adjust lines below
+```python
+121     # Adjust here to fit your needs
+122     data = packInfo(toDate=startDate, toTime='20:30',
+123             backDate=backDate, backTime='20:30',
+124             from_='台南', to_='台北',
+125             tick_n=[0, 0, 0, 0, len(users)],
+126             isStudent=isStudent, isBack=isBack)
+```
+
+3. Run `python book.py`
 
 ## TaskList:
   - [x] Train a simple [OCR model](ocr_model.h5) with this[approach 2] dataset
