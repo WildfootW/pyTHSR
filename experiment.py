@@ -5,11 +5,6 @@ import os
 import sys
 from functools import partial
 from itertools import chain
-try:
-    from itertools import izip, izip_longest
-except:
-    izip = zip
-    from itertools import zip_longest as izip_longest
 
 import cv2
 import numpy as np
@@ -19,6 +14,7 @@ from keras.models import load_model
 
 from core import captcha, WIDTH, HEIGHT, class_num, classes, CHAR_NUM
 from image import _read_img
+from handler import parse_output
 from transform import preprocess, postprocess
 from captcha.image import ImageCaptcha
 from layer_utils import InstanceNormalization2D
@@ -27,11 +23,6 @@ _ones = partial(np.ones, dtype=np.uint8)
 cap_gen = captcha(curve_width=5)
 get_cap = partial(cap_gen.create_THSR_captcha, with_clean=True)
 get_rnd_label = lambda: ''.join([classes[np.random.choice(class_num)] for _ in range(CHAR_NUM)])
-
-def parse_output(probs):
-    assert len(probs) == CHAR_NUM
-    pred_chars = list(map(lambda prob: classes[np.argmax(prob)], chain.from_iterable(zip(*probs))))
-    return list(map(''.join, izip(*[chain(pred_chars)]*CHAR_NUM)))
 
 if __name__ == '__main__':
 

@@ -54,21 +54,31 @@ $ python simple_cnn.py --load --train_ocr
 ```
 
 ### Book ticket in 60 seconds
-1. Edit `_secret.py`, fillin values of 'id' and 'phone'
+1. Edit `_secret.py`, fillin values of 'uid' and 'phone' ( and 'email' if needed )
 ```python
 secret = [{
-    'id': 'A123456789',
+    'uid': 'A123456789',
     'phone': '0911111111',
+    'email': 'xxx@gmail.com',
 }, ]
 ```
 2. Edit `book.py`, adjust lines below
 ```python
-121     # Adjust here to fit your needs
-122     data = packInfo(toDate=startDate, toTime='20:30',
-123             backDate=backDate, backTime='20:30',
-124             from_='台南', to_='台北',
-125             tick_n=[0, 0, 0, 0, len(users)],
-126             isStudent=isStudent, isBack=isBack)
+126     startDate = '2018/??/??'
+127     backDate = '2018/??/??'
+128     isStudent = True # ( or False )
+129     config.includeBack = True #  including return from B to A
+130     config.MAX_PASS = 100
+131 
+132     from _secret import secrets
+133     users = list(map(lambda x: packUserInfo(**x), secrets))
+134     userInfo = users[0]
+135     # Adjust here to fit your needs
+136     data = packInfo(toDate=startDate, toTime='20:30',
+137             backDate=backDate, backTime='20:30',
+138             from_='台南', to_='左營',   # available city name defined at line 58
+139             tick_n=[0, 0, 0, 0, len(users)],
+140             isStudent=isStudent, incBack=config.includeBack)
 ```
 
 3. Run `python book.py`

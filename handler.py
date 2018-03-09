@@ -1,5 +1,11 @@
 
 from functools import partial
+from itertools import chain
+try:
+    from itertools import izip, izip_longest
+except:
+    izip = zip
+    from itertools import zip_longest as izip_longest
 
 import numpy as np
 
@@ -24,4 +30,10 @@ def get_generator_batch(captcha_gen, label_gen, bsize, with_clean=False, mode='d
         raise RuntimeError('Unsupport Batch Mode: "%s"' % mode)
 
     return labels, X, y
+
+
+def parse_output(probs):
+    assert len(probs) == CHAR_NUM
+    pred_chars = list(map(lambda prob: classes[np.argmax(prob)], chain.from_iterable(zip(*probs))))
+    return list(map(''.join, izip(*[chain(pred_chars)]*CHAR_NUM)))
 

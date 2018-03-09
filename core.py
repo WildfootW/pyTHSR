@@ -9,3 +9,4 @@ class_num = len(classes)
 font = 'fonts/MyriadPro-Semibold.otf'
 captcha = partial(ImageCaptcha, width=WIDTH, height=HEIGHT, fonts=[font], font_sizes=[44,])
 
+

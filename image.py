@@ -1,5 +1,9 @@
 import os
 from glob import glob
+try:
+    from StringIO import StringIO  # py2
+except:
+    from io import BytesIO as StringIO  # py3
 
 import numpy as np
 from PIL import Image
@@ -7,10 +11,18 @@ from PIL import Image
 from core import WIDTH, HEIGHT
 
 def _read_img(path):
-    im = Image.open(path).convert('L')
+    im = Image.open(path)
     im.load()
-    im = im.resize((WIDTH, HEIGHT), Image.BILINEAR)
-    return np.asarray(im).reshape((1, HEIGHT, WIDTH, 1))
+    imnpy = np.asarray(_preprocess(im))
+    return imnpy.reshape((1, HEIGHT, WIDTH, 1))
+
+def Byte2Img(byte):
+    img = Image.open(StringIO(byte))
+    return _preprocess(img)
+
+def _preprocess(im):
+    '''PIL.Image -> GrayScale -> (WIDTH, HEIGHT) '''
+    return im.convert('L').resize((WIDTH, HEIGHT), Image.BILINEAR)
 
 def from_directory(dirname):
     types = ('bmp',)
